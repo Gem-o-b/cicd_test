@@ -58,3 +58,20 @@ jobs:
         docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
         docker build --build-arg DEPENDENCY=build/dependency -t ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }} .
         docker push ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}
+
+      # 서버에서 Docker 이미지 실행
+      # HOST_DEV = 퍼블릭 IPv4 DNS , USERNAME = ubuntu, KEY = pem 키 전체
+    - name: EC2 Docker Run
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST_DEV }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.KEY }}
+        port: 22
+        script: |
+          sudo usermod -aG docker $USER
+          newgrp docker
+          sudo docker stop $(docker ps -a -q) 
+          sudo docker rm $(docker ps -a -q)
+          sudo docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}
+          sudo docker run -d -p 443:443 ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}
